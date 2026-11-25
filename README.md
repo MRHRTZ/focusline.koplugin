@@ -22,8 +22,10 @@ stopped.
 
 - **Marks one sentence or one word at a time**, and follows you through the
   book.
-- **Six styles**: Box, Lighten, Underline, Strikethrough, Invert and
-  Underline (wavy).
+- **17 styles**, from plain and understated to decorative: Box, Border,
+  Pinned, a plain Underline, four underline variants (dashed, dotted,
+  double, wavy), seven ornamental underlines (diamonds, flourish, leaves,
+  scroll, flower, bow, quill), Strikethrough and Invert.
 - **Eight soft colors**: Muted Rose, Sage, Soft Apricot, Dusty Blue, Muted
   Gold, Lavender, Powder Cyan and Dusty Pink.
 - **A small picture beside the line** if you like: a flower, star, leaf or
@@ -31,7 +33,11 @@ stopped.
 - **Works with your page-turn buttons**, including Bluetooth page turners.
 - **Remembers your place.** Close the book, open it tomorrow, and the marker
   is on the same sentence.
-- **Can move on its own** at a speed you set, if you want a steady pace.
+- **Stays put while you browse.** With the persistent marker (on by
+  default), turning pages yourself never moves the marker off its sentence;
+  it only moves when you tell it to.
+- **Can move on its own**, either at a steady interval you set, or
+  automatically timed to how long each sentence takes to read.
 - **Tap the marker** to change its color or style, or to write a note on it.
 - **Works in day mode and night mode.**
 
@@ -45,10 +51,10 @@ stopped.
 | **Night mode** | **PDF files** |
 | <img src="images/night-mode.png" alt="The marker in night mode" width="340"> | <img src="images/pdf.png" alt="The marker in a PDF file" width="340"> |
 
-The six styles:
+The 17 styles, from the plain to the decorative:
 
 <p align="center">
-  <img src="images/styles.png" alt="Box, Lighten, Underline, Strikethrough, Invert and Underline (wavy)" width="760">
+  <img src="images/styles.png" alt="All 17 marker styles: Box, Border, Pinned, plain and decorated underlines, Strikethrough and Invert" width="760">
 </p>
 
 ## How to install
@@ -118,11 +124,26 @@ Do the same with another corner and **Focusline: move marker backward** if
 you want to go back as well.
 
 **Hands-free.** Let the marker move by itself. In the Focusline menu, tap
-**Auto-advance**, tick **Enable auto-advance**, and set how long it stays on
-each sentence. It pauses when you turn a page yourself.
+**Auto-advance**, tick **Enable auto-advance**, and choose a mode:
 
-If you turn a page by tapping or swiping the screen, the marker jumps to the
-top of the new page.
+- **Manual**: the marker stays on each sentence for the same amount of
+  time, an interval you set in milliseconds.
+- **Auto**: the time is worked out from the sentence itself. Longer
+  sentences get more time, short ones less, based on a reading speed (words
+  per minute) you set.
+
+It pauses when you turn a page yourself, and picks up again once you are
+back on the marker's page.
+
+**Persistent marker.** On by default. With it on, turning pages yourself
+(by button, tap or swipe) never moves the marker: it stays on its sentence
+and its page. Pressing the button that moves the marker forward or backward
+first brings you back to wherever the marker is, then moves it from there.
+There is also a **Move marker to this page** action in the Focusline menu,
+for when you want to bring the marker to the page you are looking at
+yourself. Turn persistent marker off if you would rather have the marker
+always jump to the top of whatever page you turn to, as in earlier
+versions.
 
 ### 3. Make it yours
 
@@ -130,7 +151,7 @@ Tap the marker itself. A small window opens:
 
 - **Colors**: tap one and the marker changes straight away.
 - **Note**: write a note on the marked sentence.
-- **Style**: choose one of the six styles.
+- **Style**: choose one of the 17 styles.
 - **Adjust**: make the marked part a little longer or shorter.
 - **More**: remove the marker, or copy, look up or translate the marked text.
 
@@ -151,8 +172,10 @@ Everything else is in the Focusline menu:
 | Edge image | Which picture to show. **Import PNG/SVG…** lets you use your own. |
 | Color | The color of the marker. |
 | Quick-style cycle includes | Which styles the "cycle marker style" gesture goes through. |
+| Persistent marker | Keeps the marker on its page and sentence while you turn pages yourself. On by default. |
+| Move marker to this page | Brings the marker to the page you are currently looking at. |
 | Jump to marker when reopening this book | Opens the book on the page where the marker is. On by default. |
-| Auto-advance | Moves the marker by itself, at the speed you set. |
+| Auto-advance | Moves the marker by itself, on a manual interval or a reading-speed-based timer. |
 | Keyboard / page-turn button bindings | Lets the page-turn buttons move the marker. On by default. Untick it to make the buttons turn pages again. |
 | Notify on auto-advance pause | Shows a short message when auto-advance pauses. |
 

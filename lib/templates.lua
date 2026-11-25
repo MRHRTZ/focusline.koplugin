@@ -1,11 +1,12 @@
 --[[--
 Catalogs for the two independent axes of the marker's look:
 
-  STYLES      -- how the marked text itself is rendered: a box, a stock
-                 KOReader highlight look (lighten/underline/strikethrough/
-                 invert), or a hand-drawn wavy underline. Exactly one style
-                 is active at a time. Not user-extensible (these are drawing
-                 algorithms, not assets).
+  STYLES      -- how the marked text itself is rendered: a box, a border, a
+                 pinned band, a stock KOReader highlight look (underline/
+                 strikethrough/invert), or one of the hand-drawn underlines
+                 (dashed, dotted, double, wavy, and the ornament ones).
+                 Exactly one style is active at a time. Not user-extensible
+                 (these are drawing algorithms, not assets).
   EDGE IMAGES -- an optional decorative PNG/SVG icon composited just outside
                  the marked text's bounding box (flower/star/leaf/arrow/
                  user-imported). Independent of style: can be layered on top
@@ -16,10 +17,16 @@ Catalogs for the two independent axes of the marker's look:
 
 Schema (style entry):
     { id = "box", label = _("Box"), kind = "box" }
-    -- `kind` is either a stock KOReader drawer name ("lighten" | "underscore"
-    -- | "strikeout" | "invert", rendered via KOReader's OWN drawing code so
-    -- it looks and edits identically to a normal highlight) or one of
-    -- focusline's own hand-drawn kinds ("box" | "underline_wavy").
+    -- `kind` is either a stock KOReader drawer name ("underscore" |
+    -- "strikeout" | "invert", rendered via KOReader's OWN drawing code so it
+    -- looks and edits identically to a normal highlight) or one of
+    -- focusline's own hand-drawn kinds ("box" | "border" | "pinned" |
+    -- "underline_wavy" | "underline_double" | "underline_dashed" |
+    -- "underline_dotted" | the ornament underlines). "Lighten" used to be
+    -- offered too, but its translucent fill looked the same as "Box" on
+    -- screen, so it was dropped in favor of the new "Pinned" look rather
+    -- than keep two near-identical options (a style_id of "lighten" saved by
+    -- an older version resolves to "Box", see STYLE_ALIASES below).
 
 Schema (edge image entry):
     {
@@ -45,16 +52,35 @@ local _ = require("gettext")
 local Templates = {}
 
 -- The stock-drawer-backed styles are offered so the marker can look exactly
--- like a normal highlight if the user prefers that over the decorative Box
--- look; "Underline (wavy)" has no native KOReader drawer and is hand-drawn
--- in lib/draw.lua.
+-- like a normal highlight if the user prefers that over focusline's own
+-- hand-drawn looks; everything else here has no native KOReader drawer and
+-- is hand-drawn in lib/draw.lua.
 Templates.STYLES = {
     { id = "box", label = _("Box"), kind = "box" },
-    { id = "lighten", label = _("Lighten"), kind = "lighten" },
+    { id = "border", label = _("Border"), kind = "border" },
+    { id = "pinned", label = _("Pinned"), kind = "pinned" },
     { id = "underscore", label = _("Underline"), kind = "underscore" },
+    { id = "underline_dashed", label = _("Underline (dashed)"), kind = "underline_dashed" },
+    { id = "underline_dotted", label = _("Underline (dotted)"), kind = "underline_dotted" },
+    { id = "underline_double", label = _("Underline (double)"), kind = "underline_double" },
+    { id = "underline_wavy", label = _("Underline (wavy)"), kind = "underline_wavy" },
+    -- Ornament underlines: a line with a small drawing at its ends or in its
+    -- middle, like a page divider (drawings in ornaments/, see lib/draw.lua).
+    { id = "underline_diamond", label = _("Underline (diamonds)"), kind = "underline_diamond" },
+    { id = "underline_flourish", label = _("Underline (flourish)"), kind = "underline_flourish" },
+    { id = "underline_leaves", label = _("Underline (leaves)"), kind = "underline_leaves" },
+    { id = "underline_scroll", label = _("Underline (scroll)"), kind = "underline_scroll" },
+    { id = "underline_flower", label = _("Underline (flower)"), kind = "underline_flower" },
+    { id = "underline_bow", label = _("Underline (bow)"), kind = "underline_bow" },
+    { id = "underline_quill", label = _("Underline (quill)"), kind = "underline_quill" },
     { id = "strikeout", label = _("Strikethrough"), kind = "strikeout" },
     { id = "invert", label = _("Invert"), kind = "invert" },
-    { id = "underline_wavy", label = _("Underline (wavy)"), kind = "underline_wavy" },
+}
+
+-- Ids of styles that no longer exist, and the style that takes their place
+-- wherever one is still stored (a book's settings, the quick-style list).
+local STYLE_ALIASES = {
+    lighten = "box",
 }
 
 Templates.EDGE_IMAGES_BUILTIN = {
@@ -82,7 +108,7 @@ function Templates.getStyles()
 end
 
 function Templates.getStyleById(id)
-    return STYLES_BY_ID[id]
+    return STYLES_BY_ID[id] or STYLES_BY_ID[STYLE_ALIASES[id]]
 end
 
 -- Edge images --------------------------------------------------------------
@@ -162,20 +188,26 @@ end
 -- from a style id + an optional edge image id (nil/false = no edge image
 -- overlay, matching `Settings:isEdgeImageEnabled()` being off) + color name.
 --
+-- Style kinds KOReader itself already knows how to draw (readerview.lua's
+-- drawHighlightRect); every other kind is one of focusline's own hand-drawn
+-- looks and must go through the "focusline" drawer instead (see
+-- lib/draw.lua).
+local STOCK_KINDS = { underscore = true, strikeout = true, invert = true }
+
 -- `drawer` is "focusline" (focusline's own paint routine, see lib/draw.lua)
 -- whenever any custom compositing is needed - i.e. whenever an edge image is
--- layered on, or the style itself has no stock KOReader equivalent (box,
--- underline_wavy). A plain stock style with no edge image keeps using
--- KOReader's own drawer string, so it renders/edits identically to a normal
--- highlight (e.g. its color swatch in the stock highlight-edit dialog).
+-- layered on, or the style itself has no stock KOReader equivalent. A plain
+-- stock style with no edge image keeps using KOReader's own drawer string,
+-- so it renders/edits identically to a normal highlight (e.g. its color
+-- swatch in the stock highlight-edit dialog).
 function Templates.resolve(settings, style_id, edge_image_id, color_name)
     local style = Templates.getStyleById(style_id) or STYLES_BY_ID.box
     local edge = Templates.getEdgeImageById(settings, edge_image_id)
     local drawer
-    if edge or style.kind == "box" or style.kind == "underline_wavy" then
+    if edge or not STOCK_KINDS[style.kind] then
         drawer = "focusline"
     else
-        drawer = style.kind -- "lighten" | "underscore" | "strikeout" | "invert"
+        drawer = style.kind -- "underscore" | "strikeout" | "invert"
     end
     local id = style.id .. (edge and ("+" .. edge.id) or "")
     return { id = id, drawer = drawer, color = color_name }

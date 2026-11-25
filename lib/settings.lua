@@ -21,7 +21,25 @@ local GLOBAL_SETTINGS_FILE = DataStorage:getSettingsDir() .. "/focusline_setting
 
 -- Stamped into the settings file; lets a later build tell which defaults a
 -- file was first written with.
-local SETTINGS_VERSION = 1
+--   1: 0.1.0
+--   2: the style catalog grew (Border, Pinned, more underlines) and lost
+--      "Lighten"
+local SETTINGS_VERSION = 2
+
+-- The quick-style list as 0.1.0 wrote it into every settings file.
+local CYCLE_STYLE_IDS_V1 = { "box", "lighten", "underscore", "strikeout", "invert", "underline_wavy" }
+
+local function sameList(a, b)
+    if type(a) ~= "table" or type(b) ~= "table" or #a ~= #b then
+        return false
+    end
+    for i = 1, #a do
+        if a[i] ~= b[i] then
+            return false
+        end
+    end
+    return true
+end
 
 local GLOBAL_DEFAULTS = {
     granularity = "sentence", -- "word" | "sentence"
@@ -30,10 +48,13 @@ local GLOBAL_DEFAULTS = {
     edge_image_id = "edge_star",
     color_name = Colors.DEFAULT, -- a lib/colors.lua palette id, or a stock KOReader color name
     resume_enabled = true, -- "Jump to marker when reopening this book"
+    persistent_marker = true, -- keep the marker exactly where it is during manual page turns
     auto_advance_enabled = false,
-    auto_advance_ms = 4000,
+    auto_advance_mode = "manual", -- "manual" (fixed interval) | "auto" (by the marked text's word count)
+    auto_advance_ms = 4000, -- "manual" mode: time on each step
+    auto_advance_wpm = 200, -- "auto" mode: reading speed, words per minute
     hijack_page_turn_keys = true, -- "Use page-turn buttons to move the marker"
-    cycle_style_ids = { "box", "lighten", "underscore", "strikeout", "invert", "underline_wavy" },
+    cycle_style_ids = { "box", "border", "pinned", "underscore", "strikeout", "invert", "underline_wavy" },
     notification = true,
     edge_images = nil, -- user-imported edge images get appended here (see lib/templates.lua)
 }
@@ -45,6 +66,7 @@ local DOC_DEFAULTS = {
     edge_image_id = nil, -- nil = use global default
     edge_image_enabled = nil, -- nil = use global default
     resume_enabled = nil, -- nil = use global default
+    persistent_marker = nil, -- nil = use global default
     auto_advance_enabled = nil, -- nil = use global default
 }
 
@@ -61,9 +83,18 @@ function Settings:new(o)
     -- that old default, not a choice the reader made, so it is brought up to
     -- the current default once. From then on the stored value is whatever
     -- the reader set in the menu.
-    if o.global:readSetting("settings_version") == nil then
+    local version = o.global:readSetting("settings_version")
+    if version == nil then
         o.global:saveSetting("resume_enabled", GLOBAL_DEFAULTS.resume_enabled)
         o.global:saveSetting("hijack_page_turn_keys", GLOBAL_DEFAULTS.hijack_page_turn_keys)
+    end
+    -- The quick-style list is written into the file too. If it is still the
+    -- one 0.1.0 wrote, the reader never changed it: give them the current
+    -- default, which has the new styles in it. A list they edited is kept.
+    if (version or 0) < 2 and sameList(o.global:readSetting("cycle_style_ids"), CYCLE_STYLE_IDS_V1) then
+        o.global:saveSetting("cycle_style_ids", GLOBAL_DEFAULTS.cycle_style_ids)
+    end
+    if version ~= SETTINGS_VERSION then
         o.global:saveSetting("settings_version", SETTINGS_VERSION)
     end
     for k, v in pairs(GLOBAL_DEFAULTS) do
@@ -210,6 +241,23 @@ function Settings:setAutoAdvanceEnabled(value)
     self:setDoc("auto_advance_enabled", value and true or false)
 end
 
+-- "manual": the marker stays the same fixed time (getAutoAdvanceMs()) on
+-- every step.
+-- "auto": the time is worked out from the marked text itself - its word
+-- count at the reading speed getAutoAdvanceWpm() - so a long sentence is
+-- given longer than a short one. See lib/autoadvance.lua.
+function Settings:getAutoAdvanceMode()
+    local mode = self:getGlobal("auto_advance_mode")
+    if mode == "auto" or mode == "manual" then
+        return mode
+    end
+    return GLOBAL_DEFAULTS.auto_advance_mode
+end
+
+function Settings:setAutoAdvanceMode(value)
+    self:setGlobal("auto_advance_mode", value)
+end
+
 function Settings:getAutoAdvanceMs()
     return self:getGlobal("auto_advance_ms") or GLOBAL_DEFAULTS.auto_advance_ms
 end
@@ -218,8 +266,44 @@ function Settings:setAutoAdvanceMs(value)
     self:setGlobal("auto_advance_ms", value)
 end
 
+function Settings:getAutoAdvanceWpm()
+    return self:getGlobal("auto_advance_wpm") or GLOBAL_DEFAULTS.auto_advance_wpm
+end
+
+function Settings:setAutoAdvanceWpm(value)
+    self:setGlobal("auto_advance_wpm", value)
+end
+
+-- "Persistent marker": when on (the default), turning pages yourself leaves
+-- the marker on the page and sentence it is on, instead of it following you
+-- to the top of every page you turn to - see main.lua's _onNavigated().
+function Settings:isPersistentMarkerEnabled()
+    local doc_value = self:getDoc("persistent_marker")
+    if doc_value ~= nil then
+        return doc_value
+    end
+    return self:getGlobal("persistent_marker") ~= false
+end
+
+function Settings:setPersistentMarkerEnabled(value)
+    self:setGlobal("persistent_marker", value and true or false)
+end
+
+-- The stored list may name a style that has since been merged into another
+-- one (see Templates.getStyleById), so every id is passed through the
+-- catalog: renamed ids are brought up to date, unknown and repeated ones
+-- dropped.
 function Settings:getCycleStyleIds()
-    return self:getGlobal("cycle_style_ids") or GLOBAL_DEFAULTS.cycle_style_ids
+    local Templates = require("lib/templates")
+    local ids, seen = {}, {}
+    for _, id in ipairs(self:getGlobal("cycle_style_ids") or GLOBAL_DEFAULTS.cycle_style_ids) do
+        local style = Templates.getStyleById(id)
+        if style and not seen[style.id] then
+            seen[style.id] = true
+            table.insert(ids, style.id)
+        end
+    end
+    return ids
 end
 
 function Settings:setCycleStyleIds(ids)

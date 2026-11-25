@@ -6,10 +6,9 @@ means seeing it, not guessing from a name.
 
 These are deliberately two separate concepts/dialogs, not one combined
 picker:
-  - Style: how the marked text itself renders (box/lighten/underline/
-    strikethrough/invert/wavy underline). Fixed catalog, not user-
-    extensible - these are drawing algorithms, not assets. Exactly one is
-    active.
+  - Style: how the marked text itself renders (box/border/pinned/the
+    underlines/strikethrough/invert). Fixed catalog, not user-extensible -
+    these are drawing algorithms, not assets. Exactly one is active.
   - Edge Image: an optional decorative PNG/SVG icon layered just outside the
     marked text, independent of (and composable with) whichever style is
     active. User-extensible - "Import PNG/SVG…" lives ONLY here.
@@ -64,11 +63,11 @@ local Templates = require("lib/templates")
 local StylePicker = {}
 local EdgeImagePicker = {}
 
-local PREVIEW_W = Screen:scaleBySize(64)
+local PREVIEW_W = Screen:scaleBySize(96)
 local PREVIEW_H = Screen:scaleBySize(34)
 local ROW_H = Screen:scaleBySize(56)
 local ROW_PAD = Size.padding.default
-local MAX_LIST_H = math.floor(Screen:getHeight() * 0.55)
+local MAX_LIST_H = math.floor(Screen:getHeight() * 0.62)
 
 -- Tiny standalone widget whose entire content is one entry's live preview.
 -- `paint_fn(bb, x, y, w, h)` is supplied by the caller (style vs edge-image
@@ -171,14 +170,19 @@ local function rowWidth()
     return math.floor(math.min(Screen:getWidth(), Screen:getHeight()) * 0.86)
 end
 
+-- Puts the rows in a scrolling area when there are too many of them to show
+-- at once. Returns the widget to add to the dialog and, when it scrolls, the
+-- scrolling container itself: the caller must set its `show_parent` to the
+-- dialog once that exists, or a swipe would scroll the list without the
+-- screen being repainted.
 local function wrapRows(rows, row_width)
     local rows_size = rows:getSize()
     if rows_size.h > MAX_LIST_H then
-        return ScrollableContainer:new{
+        local scroller = ScrollableContainer:new{
             dimen = Geom:new{ w = row_width, h = MAX_LIST_H },
-            show_parent = nil, -- set by caller once the dialog exists
             rows,
         }
+        return scroller, scroller
     end
     return rows
 end
@@ -215,7 +219,7 @@ function StylePicker.show(settings, opts)
         table.insert(rows, VerticalSpan:new{ width = Size.span.vertical_default })
     end
 
-    local list_widget = wrapRows(rows, row_width)
+    local list_widget, scroller = wrapRows(rows, row_width)
 
     dialog = ButtonDialog:new{
         title = _("Marker style"),
@@ -225,8 +229,8 @@ function StylePicker.show(settings, opts)
             },
         },
     }
-    if list_widget.show_parent ~= nil then
-        list_widget.show_parent = dialog
+    if scroller then
+        scroller.show_parent = dialog
     end
     dialog:addWidget(list_widget)
     UIManager:show(dialog)
@@ -330,7 +334,7 @@ function EdgeImagePicker.show(settings, opts)
         table.insert(rows, VerticalSpan:new{ width = Size.span.vertical_default })
     end
 
-    local list_widget = wrapRows(rows, row_width)
+    local list_widget, scroller = wrapRows(rows, row_width)
 
     local function importIcon()
         local chooser
@@ -392,8 +396,8 @@ function EdgeImagePicker.show(settings, opts)
             },
         },
     }
-    if list_widget.show_parent ~= nil then
-        list_widget.show_parent = dialog
+    if scroller then
+        scroller.show_parent = dialog
     end
     dialog:addWidget(list_widget)
     UIManager:show(dialog)

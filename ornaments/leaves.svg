@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 40" width="132" height="40">
+  <path d="M60 20 L12 20" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(16 20) rotate(180)"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(52 20) rotate(222)"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(52 20) rotate(138)"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(34 20) rotate(222)"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(34 20) rotate(138)"/>
+  <path d="M72 20 L120 20" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(116 20)"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(80 20) rotate(-42)"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(80 20) rotate(42)"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(98 20) rotate(-42)"/>
+  <path d="M0 0 C5 -7 14 -7 19 0 C14 7 5 7 0 0 Z" fill="#000000" transform="translate(98 20) rotate(42)"/>
+</svg>

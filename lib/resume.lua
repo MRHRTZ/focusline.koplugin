@@ -22,16 +22,26 @@ function Resume:new(o)
     return o
 end
 
--- Navigate to the page holding the marker's current unit. Called from
--- main.lua's _restoreMarker() AFTER it has re-anchored the marker to the
--- saved item, and only when that unit is not already on screen - a marker
--- that is already visible needs no navigation at all, whatever this setting
--- says. Returns true if the marker is on screen afterwards.
+-- Navigate to the page holding the marker's current unit, if "Jump to marker
+-- when reopening" is on. Called from main.lua's _restoreMarker() AFTER it
+-- has re-anchored the marker to the saved item, and only when that unit is
+-- not already on screen - a marker that is already visible needs no
+-- navigation at all, whatever this setting says. Returns true if the marker
+-- is on screen afterwards.
 function Resume:jumpToMarker()
     if not self.settings:isResumeEnabled() then
         return false
     end
-    local unit = self.marker.unit
+    return self:goToMarker()
+end
+
+-- Navigate to the page holding the marker's current unit, whatever the
+-- "Jump to marker when reopening" setting says. Used on its own when the
+-- reader asks to move a marker that was left behind on another page (see
+-- main.lua's _returnToMarker). Returns true if the marker is on screen
+-- afterwards.
+function Resume:goToMarker()
+    local unit = self.marker and self.marker.unit
     if not unit then
         return false
     end
@@ -67,7 +77,7 @@ function Resume:jumpToMarker()
     -- set, it would swallow the reader's next real page turn.
     self.marker:consumeSelfInitiated()
     if ok and self.marker:isOnScreen() then
-        logger.dbg("focusline: resumed to marker position")
+        logger.dbg("focusline: went to marker position")
         return true
     end
     return false

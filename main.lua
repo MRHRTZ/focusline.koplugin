@@ -64,6 +64,9 @@ function Focusline:init()
     self.autoadvance = AutoAdvance:new{
         settings = self.settings,
         on_tick = function() return self:_onAutoAdvanceTick() end,
+        get_text = function()
+            return self.marker and self.marker.unit and self.marker.unit.text
+        end,
     }
     self._key_hijacked = false
     self._orig_next_key_event = nil
@@ -98,6 +101,8 @@ function Focusline:onDispatcherRegisterActions()
         {category="none", event="FocuslineCycleStyle", title=_("Focusline: cycle marker style"), reader=true})
     Dispatcher:registerAction("focusline_toggle_auto_advance",
         {category="none", event="FocuslineToggleAutoAdvance", title=_("Focusline: toggle auto-advance"), reader=true})
+    Dispatcher:registerAction("focusline_marker_here",
+        {category="none", event="FocuslineMarkerHere", title=_("Focusline: move marker to this page"), reader=true})
 end
 
 -- Menu ----------------------------------------------------------------------
@@ -207,9 +212,7 @@ function Focusline:_resumeOrAnchor()
         self.marker:anchorToCurrentPage()
         self:_syncAnnotationToMarker()
     end
-    if self.settings:isAutoAdvanceEnabled() then
-        self.autoadvance:start()
-    end
+    self:_startAutoAdvanceIfVisible()
 end
 
 -- Pick the marker back up from where the book's own saved annotation item
@@ -223,14 +226,16 @@ end
 --     (the common case: KOReader reopens at the last-read page, which is
 --     where the marker was);
 --   - marker elsewhere, jump on    -> go to the marker's page;
---   - marker elsewhere, jump off   -> not restorable here; the marker
---     follows the reader to the current page instead.
+--   - marker elsewhere, jump off   -> with "Persistent marker" on, the
+--     marker stays where it was saved, off screen; with it off, the marker
+--     is not restorable here and follows the reader to the current page.
 function Focusline:_restoreMarker()
     local anchor = self.bridge:getMarkerAnchor()
     if not anchor or not self.marker:anchorTo(anchor) then
         return false
     end
-    if not self.marker:isOnScreen() and not self.resume:jumpToMarker() then
+    if not self.marker:isOnScreen() and not self.resume:jumpToMarker()
+        and not self.settings:isPersistentMarkerEnabled() then
         return false
     end
     -- The marker comes back looking the way it was left. Color is a global
@@ -349,9 +354,11 @@ function Focusline:_adoptMarkerStyle(item)
     if item.color and item.color ~= self.settings:getColorName() then
         self.settings:setColorName(item.color)
     end
-    -- A stock drawer name ("lighten", "underscore", ...) is also the id of
-    -- the matching Focusline style. "focusline" itself carries no style
-    -- information (it is what Box / wavy / any edge-image look resolves to).
+    -- A stock drawer name ("underscore", "strikeout", ...) is also the id of
+    -- the matching Focusline style (and the stock "lighten", which Focusline
+    -- no longer offers, stands for Box). "focusline" itself carries no style
+    -- information (it is what every hand-drawn style and any edge-image look
+    -- resolves to).
     if item.drawer ~= "focusline" then
         local style = Templates.getStyleById(item.drawer)
         if style and style.id ~= self.settings:getStyleId() then
@@ -382,7 +389,9 @@ end
 
 -- Take the marker off the page (same effect as deleting it from the stock
 -- highlight dialog). Focusline stays enabled for the book: the marker comes
--- back at the next move, or at the top of the page on the next page turn.
+-- back at the next move, or at the top of the page on the next page turn
+-- (also with "Persistent marker" on: there is no marker left to keep in
+-- place, see _onNavigated).
 function Focusline:removeMarker()
     self.autoadvance:stop()
     self:_clearMarkerAnnotationOnly()
@@ -520,24 +529,72 @@ function Focusline:_afterMove(moved)
     return true
 end
 
-function Focusline:onFocuslineNextUnit()
-    if not self:_isActive() then
-        return true
+-- With "Persistent marker" on, the reader can turn pages and leave the marker
+-- behind on the page it was on. A request to move it from there is answered
+-- by going back to the marker first - same sentence, same page - and only
+-- the next request moves it: the marker never moves while it is out of
+-- sight, and the reader sees where they were before it goes on.
+--
+-- Returns true if that is what happened (the caller then does not move the
+-- marker as well), false if the marker is on screen and can simply move.
+function Focusline:_returnToMarker()
+    local marker = self.marker
+    if not marker.unit or marker:isOnScreen() then
+        return false
     end
-    local moved = self.marker:moveNext()
+    if not self.bridge:isMarkerPresent() or not self.resume:goToMarker() then
+        -- Nothing to go back to (the marker was deleted, or its place in the
+        -- book can no longer be found): start again on the page shown.
+        marker:anchorToCurrentPage()
+        self:_syncAnnotationToMarker()
+    end
+    self:_startAutoAdvanceIfVisible()
+    return true
+end
+
+-- Move the marker one unit forward (1) or backward (-1), on the reader's
+-- request (a page-turn button, a gesture).
+function Focusline:_moveMarker(direction)
+    if self:_returnToMarker() then
+        return
+    end
+    local moved
+    if direction > 0 then
+        moved = self.marker:moveNext()
+    else
+        moved = self.marker:movePrev()
+    end
     self:_afterMove(moved)
-    if not moved then
+    if not moved and direction > 0 then
         self:_maybeFinishBook()
+    end
+end
+
+function Focusline:onFocuslineNextUnit()
+    if self:_isActive() then
+        self:_moveMarker(1)
     end
     return true
 end
 
 function Focusline:onFocuslinePrevUnit()
+    if self:_isActive() then
+        self:_moveMarker(-1)
+    end
+    return true
+end
+
+-- Put the marker on the first sentence/word of the page shown, wherever it
+-- was. The way to bring a persistent marker along after skipping to another
+-- part of the book.
+function Focusline:onFocuslineMarkerHere()
     if not self:_isActive() then
         return true
     end
-    local moved = self.marker:movePrev()
-    self:_afterMove(moved)
+    if self.marker:anchorToCurrentPage() then
+        self:_syncAnnotationToMarker()
+        self:_startAutoAdvanceIfVisible()
+    end
     return true
 end
 
@@ -668,11 +725,7 @@ function Focusline:onFocuslineKeyNext(args)
     if not self:_isActive() then
         return self.ui:handleEvent(Event:new("GotoViewRel", args or 1))
     end
-    local moved = self.marker:moveNext()
-    self:_afterMove(moved)
-    if not moved then
-        self:_maybeFinishBook()
-    end
+    self:_moveMarker(1)
     return true
 end
 
@@ -680,8 +733,7 @@ function Focusline:onFocuslineKeyPrev(args)
     if not self:_isActive() then
         return self.ui:handleEvent(Event:new("GotoViewRel", args or -1))
     end
-    local moved = self.marker:movePrev()
-    self:_afterMove(moved)
+    self:_moveMarker(-1)
     return true
 end
 
@@ -689,6 +741,11 @@ end
 
 function Focusline:_onAutoAdvanceTick()
     if not self:_isActive() or not self.settings:isAutoAdvanceEnabled() then
+        return false
+    end
+    if self.marker.unit and not self.marker:isOnScreen() then
+        -- The marker was left on another page ("Persistent marker"): it does
+        -- not move out of sight, and the reader is not pulled back to it.
         return false
     end
     local moved = self.marker:moveNext()
@@ -707,21 +764,37 @@ function Focusline:onFocuslineToggleAutoAdvance()
 end
 
 function Focusline:onAutoAdvanceSettingsChanged()
-    if self:_isActive() and self.settings:isAutoAdvanceEnabled() then
-        self.autoadvance:start()
-    else
-        self.autoadvance:stop()
-    end
+    self.autoadvance:stop()
+    self:_startAutoAdvanceIfVisible()
 end
 
--- Auto-pause on manual navigation --------------------------------------------
+-- Start the auto-advance timer if it is switched on and the marker is on the
+-- page shown; does nothing if it is already running. The timer never runs
+-- while the marker is out of sight (see _onAutoAdvanceTick).
+function Focusline:_startAutoAdvanceIfVisible()
+    if self.autoadvance:isRunning() or not self:_isActive() or not self.settings:isAutoAdvanceEnabled() then
+        return
+    end
+    if self.marker.unit and not self.marker:isOnScreen() then
+        return
+    end
+    self.autoadvance:start()
+end
+
+-- Manual navigation -----------------------------------------------------------
 
 -- Fired by readerrolling.lua/readerpaging.lua on every position/page change
 -- (including ones WE trigger via GotoViewRel/GotoPage inside
 -- lib/marker.lua's _advancePage). marker:consumeSelfInitiated() tells us
 -- whether this particular change was ours; if not, the user paged/scrolled
--- manually, so we pause auto-advance and re-anchor the marker to wherever
--- they landed (the marker follows the reader, it never fights them).
+-- manually. What happens then depends on "Persistent marker":
+--
+--   on (default)  the marker stays exactly where it is - same page, same
+--                 sentence - however far the reader goes. Auto-advance is
+--                 paused while the marker is out of sight and picks up
+--                 again when the reader comes back to its page.
+--   off           the marker follows the reader: it is re-anchored to the
+--                 top of wherever they landed, and auto-advance is paused.
 function Focusline:onPosUpdate()
     self:_onNavigated()
 end
@@ -748,9 +821,22 @@ function Focusline:_onNavigated()
         return
     end
     local was_running = self.autoadvance:isRunning()
-    self.autoadvance:pause()
-    self.marker:anchorToCurrentPage()
-    self:_syncAnnotationToMarker()
+    -- A marker that has been deleted (or that ran off the end of the book)
+    -- is not kept in place: there is nothing on the page to keep.
+    local persistent = self.settings:isPersistentMarkerEnabled()
+        and self.marker.unit ~= nil and self.bridge:isMarkerPresent()
+    if persistent then
+        if self.marker:isOnScreen() then
+            -- Still on (or back on) the marker's page.
+            self:_startAutoAdvanceIfVisible()
+            return
+        end
+        self.autoadvance:pause()
+    else
+        self.autoadvance:pause()
+        self.marker:anchorToCurrentPage()
+        self:_syncAnnotationToMarker()
+    end
     if was_running and self.settings:isNotificationEnabled() then
         Notification:notify(_("Focusline: auto-advance paused (manual page turn)"))
     end

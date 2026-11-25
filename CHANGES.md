@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.2.0
+
+### Looks
+
+- Three new styles: **Border** (like Box, but outline only, no fill),
+  **Pinned** (a pale tinted band with a text-selection-style handle — a
+  vertical bar and a round dot — at the very start and very end of the
+  marked text), and seven ornamental underlines modeled on decorative page
+  dividers: diamonds, flourish, leaves, scroll, flower, bow and quill. Each
+  draws its ornament either at the true first and last line of a wrapped
+  sentence (diamonds, flourish) or centered on every line (leaves, scroll,
+  flower, bow, quill). 17 styles in total.
+- "Lighten" was removed: its translucent fill looked the same as Box on
+  screen. A book that still has an old "Lighten" marker keeps working — it
+  is shown as Box instead.
+- The style picker and all style previews, including the new ones, invert
+  correctly in night mode.
+
+### Moving the marker
+
+- **Auto-advance** now has two modes: **Manual**, where the marker stays on
+  each sentence for a fixed interval you set in milliseconds (as before),
+  and **Auto**, where the time is worked out from the sentence itself — its
+  word count and a reading speed (words per minute) you set — so long
+  sentences get more time than short ones.
+- **Persistent marker**, on by default: turning pages yourself (button, tap
+  or swipe) no longer moves the marker off its sentence. It stays exactly
+  where it was; pressing the button that moves the marker forward or
+  backward first brings you back to it, then moves it from there on the
+  next press. A new **Move marker to this page** action brings the marker
+  to the page you are looking at, when you want that. Turn this off to get
+  the old behavior back, where the marker jumps to the top of every page
+  you turn to.
+- The default quick-style cycle list now includes Border and Pinned
+  alongside the older entries; existing custom cycle lists are left
+  untouched.
+
 ## 0.1.0 — first release
 
 ### The marker

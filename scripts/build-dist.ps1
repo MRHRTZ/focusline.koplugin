@@ -57,6 +57,15 @@ Get-ChildItem -LiteralPath (Join-Path $root 'icons') -File | ForEach-Object {
 # Keeps the (empty) folder that imported edge images are copied into.
 $files.Add('icons\user_imports\.gitkeep')
 
+# The drawings used by the ornament underline styles.
+$ornaments = @(Get-ChildItem -LiteralPath (Join-Path $root 'ornaments') -File -Filter '*.svg')
+if ($ornaments.Count -eq 0) {
+    throw 'No ornament drawings found in ornaments\'
+}
+$ornaments | ForEach-Object {
+    $files.Add($_.FullName.Substring($root.Length + 1))
+}
+
 $files = $files | Sort-Object -Unique
 
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null

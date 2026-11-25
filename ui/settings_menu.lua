@@ -59,16 +59,97 @@ local function granularitySubItems(fl)
     return items
 end
 
-local function autoAdvanceMsItem(fl)
+local AUTO_ADVANCE_MODES = {
+    {
+        id = "manual",
+        label = _("Manual: same time on every step"),
+        help = _("The marker moves on after the interval you set below, whatever it is on."),
+    },
+    {
+        id = "auto",
+        label = _("Auto: time worked out from the text"),
+        help = _("The marker stays on each sentence for as long as it takes to read it: the words in the sentence are counted, and the time is worked out from the reading speed you set below. A long sentence gets more time than a short one."),
+    },
+}
+
+local autoAdvanceMsItem, autoAdvanceWpmItem
+
+-- The "Auto-advance" sub-menu: the on/off switch, the two modes, and the one
+-- number each mode uses.
+local function autoAdvanceItems(fl)
+    local items = {
+        {
+            text = _("Enable auto-advance"),
+            checked_func = function() return fl.settings:isAutoAdvanceEnabled() end,
+            callback = function()
+                fl.settings:setAutoAdvanceEnabled(not fl.settings:isAutoAdvanceEnabled())
+                fl:onAutoAdvanceSettingsChanged()
+            end,
+            separator = true,
+        },
+    }
+    for _, mode in ipairs(AUTO_ADVANCE_MODES) do
+        table.insert(items, {
+            text = mode.label,
+            radio = true,
+            help_text = mode.help,
+            checked_func = function()
+                return fl.settings:getAutoAdvanceMode() == mode.id
+            end,
+            callback = function()
+                fl.settings:setAutoAdvanceMode(mode.id)
+                fl:onAutoAdvanceSettingsChanged()
+            end,
+        })
+    end
+    items[#items].separator = true
+    table.insert(items, autoAdvanceMsItem(fl))
+    table.insert(items, autoAdvanceWpmItem(fl))
+    return items
+end
+
+function autoAdvanceWpmItem(fl)
     return {
         text_func = function()
-            return T(_("Auto-advance interval: %1 ms"), fl.settings:getAutoAdvanceMs())
+            return T(_("Reading speed: %1 words per minute"), fl.settings:getAutoAdvanceWpm())
         end,
         keep_menu_open = true,
         enabled_func = function()
-            return fl.settings:isAutoAdvanceEnabled()
+            return fl.settings:getAutoAdvanceMode() == "auto"
         end,
-        callback = function()
+        callback = function(touchmenu_instance)
+            local spin = SpinWidget:new{
+                value = fl.settings:getAutoAdvanceWpm(),
+                value_min = 30,
+                value_max = 1000,
+                value_step = 10,
+                value_hold_step = 50,
+                precision = "%d",
+                unit = _("wpm"),
+                ok_text = _("Set"),
+                title_text = _("Reading speed"),
+                info_text = _("How many words you read in a minute. Used in Auto mode to work out how long the marker stays on each sentence. Most people read between 150 and 300 words per minute."),
+                callback = function(spin_widget)
+                    fl.settings:setAutoAdvanceWpm(spin_widget.value)
+                    fl:onAutoAdvanceSettingsChanged()
+                    refreshMenu(touchmenu_instance)
+                end,
+            }
+            UIManager:show(spin)
+        end,
+    }
+end
+
+function autoAdvanceMsItem(fl)
+    return {
+        text_func = function()
+            return T(_("Interval: %1 ms"), fl.settings:getAutoAdvanceMs())
+        end,
+        keep_menu_open = true,
+        enabled_func = function()
+            return fl.settings:getAutoAdvanceMode() ~= "auto"
+        end,
+        callback = function(touchmenu_instance)
             local spin = SpinWidget:new{
                 value = fl.settings:getAutoAdvanceMs(),
                 value_min = 200,
@@ -79,10 +160,11 @@ local function autoAdvanceMsItem(fl)
                 unit = _("ms"),
                 ok_text = _("Set"),
                 title_text = _("Auto-advance interval"),
-                info_text = _("How often the marker moves forward automatically, in milliseconds. You can type an exact value."),
+                info_text = _("How often the marker moves forward automatically, in milliseconds. Used in Manual mode. You can type an exact value."),
                 callback = function(spin_widget)
                     fl.settings:setAutoAdvanceMs(spin_widget.value)
                     fl:onAutoAdvanceSettingsChanged()
+                    refreshMenu(touchmenu_instance)
                 end,
             }
             UIManager:show(spin)
@@ -221,6 +303,22 @@ function SettingsMenu.build(fl)
             },
             cycleStyleInfo(fl),
             {
+                text = _("Persistent marker"),
+                checked_func = function() return settings:isPersistentMarkerEnabled() end,
+                callback = function()
+                    settings:setPersistentMarkerEnabled(not settings:isPersistentMarkerEnabled())
+                end,
+                help_text = _("When on, the marker stays on its page and its sentence while you turn pages yourself. Come back to that page and it is still there; press the button that moves the marker and you are taken back to it.\n\nWhen off, the marker follows you: it jumps to the top of every page you turn to."),
+            },
+            {
+                text = _("Move marker to this page"),
+                enabled_func = function() return settings:isEnabled() end,
+                callback = function()
+                    fl:onFocuslineMarkerHere()
+                end,
+                help_text = _("Puts the marker at the top of the page you are looking at."),
+            },
+            {
                 text = _("Jump to marker when reopening this book"),
                 checked_func = function() return settings:isResumeEnabled() end,
                 callback = function()
@@ -230,17 +328,7 @@ function SettingsMenu.build(fl)
             },
             {
                 text = _("Auto-advance"),
-                sub_item_table = {
-                    {
-                        text = _("Enable auto-advance"),
-                        checked_func = function() return settings:isAutoAdvanceEnabled() end,
-                        callback = function()
-                            settings:setAutoAdvanceEnabled(not settings:isAutoAdvanceEnabled())
-                            fl:onAutoAdvanceSettingsChanged()
-                        end,
-                    },
-                    autoAdvanceMsItem(fl),
-                },
+                sub_item_table = autoAdvanceItems(fl),
                 separator = true,
             },
             {
