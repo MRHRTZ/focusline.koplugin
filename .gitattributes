@@ -1,0 +1,6 @@
+# Keep plugin files with LF line endings on every machine, so the release zip
+# is the same wherever it is built.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.gif binary

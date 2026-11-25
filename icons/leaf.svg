@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <path fill="#000000" d="
+    M 10 54
+    C 10 30 20 8 54 6
+    C 56 36 40 52 10 54
+    Z
+  "/>
+  <path stroke="#ffffff" stroke-width="2.5" fill="none" d="
+    M 12 52
+    C 24 40 36 28 50 10
+  "/>
+</svg>

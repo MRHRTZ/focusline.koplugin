@@ -1,0 +1,6 @@
+# Build output (see build.bat)
+dist/
+
+# Edge images imported on this machine
+icons/user_imports/*
+!icons/user_imports/.gitkeep
