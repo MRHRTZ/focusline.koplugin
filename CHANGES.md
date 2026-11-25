@@ -5,15 +5,15 @@
 ### Looks
 
 - Three new styles: **Border** (like Box, but outline only, no fill),
-  **Pinned** (a pale tinted band with a text-selection-style handle — a
-  vertical bar and a round dot — at the very start and very end of the
+  **Pinned** (a pale tinted band with a text-selection-style handle, a
+  vertical bar and a round dot, at the very start and very end of the
   marked text), and seven ornamental underlines modeled on decorative page
   dividers: diamonds, flourish, leaves, scroll, flower, bow and quill. Each
   draws its ornament either at the true first and last line of a wrapped
   sentence (diamonds, flourish) or centered on every line (leaves, scroll,
   flower, bow, quill). 17 styles in total.
 - "Lighten" was removed: its translucent fill looked the same as Box on
-  screen. A book that still has an old "Lighten" marker keeps working — it
+  screen. A book that still has an old "Lighten" marker keeps working; it
   is shown as Box instead.
 - The style picker and all style previews, including the new ones, invert
   correctly in night mode.
@@ -22,8 +22,8 @@
 
 - **Auto-advance** now has two modes: **Manual**, where the marker stays on
   each sentence for a fixed interval you set in milliseconds (as before),
-  and **Auto**, where the time is worked out from the sentence itself — its
-  word count and a reading speed (words per minute) you set — so long
+  and **Auto**, where the time is worked out from the sentence itself: its
+  word count and a reading speed (words per minute) you set, so long
   sentences get more time than short ones.
 - **Persistent marker**, on by default: turning pages yourself (button, tap
   or swipe) no longer moves the marker off its sentence. It stays exactly
@@ -37,7 +37,7 @@
   alongside the older entries; existing custom cycle lists are left
   untouched.
 
-## 0.1.0 — first release
+## 0.1.0 - first release
 
 ### The marker
 
