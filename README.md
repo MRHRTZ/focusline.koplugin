@@ -184,5 +184,3 @@ Focusline is free. If it makes your reading nicer, you can buy me a coffee.
 Thank you!
 
 [![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/mrhrtz)
-
-https://ko-fi.com/mrhrtz
